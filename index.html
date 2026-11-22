@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Cavern Keeper</title>
+<meta name="theme-color" content="#17141f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cavern Keeper">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<style>
+/*
+VOICE   a pocket handheld: the game is the whole point, the buttons get out of its way
+IDEA    the Cardputer reborn as a sideways game console, dark housing, chunky keys
+PICTURE the 240x135 game screen itself, scaled up crisp with pixelated edges
+COLOUR  near-black violet housing, C64 yellow for the main button, muted greys for the rest
+LAYOUT  sideways: d-pad | screen | buttons; upright: screen on top, controls beneath
+*/
+:root{color-scheme:dark;--housing:#17141f;--panel:#221e2c;--key:#36313f;--key-hi:#4a4456;--ink:#e9e6f0;--dim:#a39db0;--yellow:#edf171;--blue:#2e2c9b}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;background:var(--housing);color:var(--ink);font:600 14px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;touch-action:none;overscroll-behavior:none}
+#app{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;
+  padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+#screenWrap{grid-column:2;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+#screen{display:block;image-rendering:pixelated;image-rendering:crisp-edges;background:#000;border-radius:6px;
+  box-shadow:0 0 0 3px #0c0a11,0 0 0 5px #2b2636,0 10px 30px #0008}
+#status{font-size:12px;font-weight:500;color:var(--dim);min-height:15px;text-align:center}
+.side{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#left{grid-column:1;grid-row:1}#right{grid-column:3;grid-row:1}
+button{font:inherit;color:var(--ink);background:linear-gradient(#423c4d,var(--key));border:0;border-radius:12px;min-height:44px;
+  box-shadow:0 3px 0 #0b0910,inset 0 1px 0 #ffffff1c;touch-action:none;cursor:pointer;padding:0 6px}
+button.down{transform:translateY(2px);box-shadow:0 1px 0 #0b0910;background:var(--key-hi)}
+button:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+/* d-pad */
+#dpad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:3px}
+#dpad button{border-radius:10px;font-size:20px;padding:0}
+#dpad .c{background:var(--panel);box-shadow:none;pointer-events:none}
+.u{grid-area:1/2}.l{grid-area:2/1}.c{grid-area:2/2}.r{grid-area:2/3}.d{grid-area:3/2}
+.small{display:grid;grid-template-columns:repeat(2,76px);gap:7px}
+.small button{min-height:38px;font-size:12px;border-radius:10px}
+.acts{display:grid;grid-template-columns:repeat(2,80px);gap:9px}
+.acts button{min-height:46px;font-size:13px}
+#use{grid-column:1/3;min-height:56px;font-size:16px;color:#1b1a08;background:linear-gradient(#f6f89a,var(--yellow));box-shadow:0 3px 0 #6d6f22,inset 0 1px 0 #fff8}
+#use.down{background:#fcfdb8;box-shadow:0 1px 0 #6d6f22}
+#back{background:linear-gradient(#5a5366,#46404f)}
+/* upright phone: screen on top, controls below */
+@media (orientation:portrait){
+  #app{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;row-gap:18px}
+  #screenWrap{grid-column:1/3;grid-row:1;padding-top:6px}
+  #left{grid-column:1;grid-row:2;align-self:center}#right{grid-column:2;grid-row:2;align-self:center}
+  #dpad{grid-template-columns:repeat(3,min(16vw,64px));grid-template-rows:repeat(3,min(16vw,64px))}
+  .acts{grid-template-columns:repeat(2,min(21vw,84px))}.small{grid-template-columns:repeat(2,min(20vw,78px))}
+}
+/* start overlay */
+#start{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  background:radial-gradient(ellipse at 50% 40%,#2a2440,var(--housing) 70%);text-align:center;padding:24px}
+#start h1{margin:0;font:800 clamp(30px,8vw,46px)/1.05 Georgia,"Times New Roman",serif;color:#fff;text-shadow:3px 3px 0 #000}
+#start h2{margin:-8px 0 0;font:800 clamp(20px,5vw,28px)/1 system-ui,sans-serif;color:#e04848;letter-spacing:.02em;text-shadow:2px 2px 0 #000}
+#start p{margin:0;color:var(--dim);font-weight:500;max-width:34ch}
+#go{min-height:54px;padding:0 34px;font-size:18px;color:#1b1a08;background:linear-gradient(#f6f89a,var(--yellow));box-shadow:0 4px 0 #6d6f22}
+#go:disabled{opacity:.5}
+@media (prefers-reduced-motion:no-preference){#go:not(:disabled){animation:pulse 1.6s ease-in-out infinite}}
+@keyframes pulse{50%{transform:scale(1.04)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="side" id="left">
+    <div id="dpad">
+      <button class="u" data-key="59" data-repeat aria-label="Forward">▲</button>
+      <button class="l" data-key="44" data-repeat aria-label="Turn left">◀</button>
+      <div class="c"></div>
+      <button class="r" data-key="47" data-repeat aria-label="Turn right">▶</button>
+      <button class="d" data-key="46" data-repeat aria-label="Back">▼</button>
+    </div>
+    <div class="small">
+      <button data-key="98">Build</button>
+      <button data-key="114">Reinforce</button>
+      <button data-key="116">Teleport</button>
+      <button data-key="115">Save</button>
+    </div>
+  </div>
+  <div id="screenWrap">
+    <canvas id="screen" width="240" height="135"></canvas>
+    <div id="status"></div>
+  </div>
+  <div class="side" id="right">
+    <div class="acts">
+      <button id="use" data-key="13">Dig / Use</button>
+      <button id="back" data-key="8">Back</button>
+      <button data-key="112">Pick up</button>
+      <button data-key="100">Drop</button>
+      <button data-key="99">Catch</button>
+      <button data-key="102">Eat</button>
+    </div>
+  </div>
+</div>
+<div id="start">
+  <h1>Cavern Keeper</h1>
+  <h2>SOVEREIGN IMP</h2>
+  <p id="startNote">Loading…</p>
+  <button id="go" disabled>Tap to play</button>
+  <p>Turn your phone sideways for the biggest screen.</p>
+</div>
+<script>
+{
+const $ = s => document.querySelector(s);
+const canvas = $('#screen'), ctx = canvas.getContext('2d');
+const img = ctx.createImageData(240, 135);
+let ex = null, mem = null, lastFrames = -1;
+
+/* ---------- storage: the page's database (private to you), else this browser ---------- */
+const cache = new Map();                     // key -> Uint8Array, read by the game synchronously
+let db = null, userId = null, mode = 'local';
+const b64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+// Database names allow letters, digits, _ and -; anything else becomes ~ plus its hex code
+const docId = k => k.replace(/[^A-Za-z0-9_-]/g, c => '~' + c.charCodeAt(0).toString(16).padStart(2, '0'));
+function localGet(k) { try { const v = localStorage.getItem('ck:' + k); return v == null ? null : unb64(v); } catch { return null; } }
+function localSet(k, u) { try { localStorage.setItem('ck:' + k, b64(u)); } catch {} }
+function localDel(k) { try { localStorage.removeItem('ck:' + k); } catch {} }
+const pending = new Map(); let writing = false;   // one database write at a time, newest value wins
+async function flush() {
+  if (writing || !db) return;
+  writing = true;
+  while (pending.size) {
+    const [k, u] = pending.entries().next().value; pending.delete(k);
+    try {
+      const ref = db.collection('data/users/' + userId).doc(docId(k));
+      if (u) await ref.set({ k, v: b64(u) }); else await ref.delete();
+    } catch (e) { setStatus('Couldn’t reach the save store; kept on this phone for now'); }
+  }
+  writing = false;
+}
+function storePut(k, u) { cache.set(k, u); localSet(k, u); if (db) { pending.set(k, u); flush(); } }
+function storeDel(k) { cache.delete(k); localDel(k); if (db) { pending.set(k, null); flush(); } }
+async function loadStore() {
+  try {   // what this browser already has
+    for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (key.startsWith('ck:')) cache.set(key.slice(3), localGet(key.slice(3))); }
+  } catch {}
+  try {
+    if (!window.claude || !claude.use) return;
+    const timeout = new Promise(r => setTimeout(() => r(null), 6000));
+    const [d, u] = await Promise.race([Promise.all([claude.use('db'), claude.use('user')]), timeout.then(() => [null, null])]);
+    if (!d || !u) return;
+    userId = await u.id();
+    const snap = await Promise.race([d.collection('data/users/' + userId).get(), timeout]);
+    if (!snap) return;
+    db = d; mode = 'db';
+    const docs = snap.docs || snap;
+    for (const doc of docs) { const v = doc.data ? doc.data() : doc; if (v && v.k && v.v) cache.set(v.k, unb64(v.v)); }
+  } catch (e) { db = null; mode = 'local'; }
+}
+
+/* ---------- sound: the Cardputer's beeps through Web Audio ---------- */
+let audio = null, toneAt = 0;
+function tone(freq, ms, vol) {
+  if (!audio || vol <= 0) return;
+  const t = Math.max(audio.currentTime, toneAt), dur = ms / 1000;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = 'square'; o.frequency.value = freq;
+  const peak = 0.12 * vol / 250;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + 0.004);
+  g.gain.setValueAtTime(peak, t + dur - 0.01); g.gain.linearRampToValueAtTime(0, t + dur);
+  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + dur + 0.02);
+  toneAt = t + dur;                          // beeps in one moment play one after another
+}
+
+/* ---------- the game ---------- */
+const str = p => { const b = new Uint8Array(mem.buffer); let s = ''; while (b[p]) s += String.fromCharCode(b[p++]); return s; };
+const env = {
+  js_tone: (f, ms, v) => tone(f, ms, v),
+  js_brightness: b => { canvas.style.filter = 'brightness(' + (0.35 + 0.65 * b / 250).toFixed(2) + ')'; },
+  js_random: () => (crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0,
+  js_store_size: k => { const u = cache.get(str(k)); return u ? u.length : -1; },
+  js_store_read: (k, buf, max) => { const u = cache.get(str(k)); if (!u) return -1; const n = Math.min(max, u.length); new Uint8Array(mem.buffer, buf, n).set(u.subarray(0, n)); return n; },
+  js_store_write: (k, buf, len) => { storePut(str(k), new Uint8Array(mem.buffer, buf, len).slice()); return len; },
+  js_store_remove: k => storeDel(str(k)),
+};
+const wasi = { random_get: (p, n) => { crypto.getRandomValues(new Uint8Array(mem.buffer, p, n)); return 0; } };
+
+function paint() {
+  const fb = new Uint16Array(mem.buffer, ex.web_fb(), 240 * 135), d = img.data;
+  for (let i = 0, j = 0; i < fb.length; i++, j += 4) {
+    const c = ((fb[i] & 0xFF) << 8) | (fb[i] >> 8);          // the sprite stores colours byte-swapped
+    d[j] = (c >> 11) * 255 / 31; d[j + 1] = ((c >> 5) & 63) * 255 / 63; d[j + 2] = (c & 31) * 255 / 31; d[j + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function tick(now) {
+  const frames = ex.web_frame(Math.floor(now));
+  if (frames !== lastFrames) { lastFrames = frames; paint(); }
+  requestAnimationFrame(tick);
+}
+function key(code) { if (ex) ex.web_key(code); }
+
+/* ---------- screen size: as big as fits, whole-number scale where it can be ---------- */
+function fit() {
+  const portrait = innerHeight > innerWidth;
+  const availW = portrait ? innerWidth - 20 : innerWidth - 2 * 190;
+  const availH = portrait ? innerHeight * 0.48 : innerHeight - 40;
+  let s = Math.min(availW / 240, availH / 135);
+  if (s >= 2) s = Math.floor(s);                                 // crisp whole pixels
+  s = Math.max(s, 1);
+  canvas.style.width = Math.floor(240 * s) + 'px'; canvas.style.height = Math.floor(135 * s) + 'px';
+}
+addEventListener('resize', fit); fit();
+
+/* ---------- buttons: press on touch-down, hold the d-pad to keep walking ---------- */
+for (const b of document.querySelectorAll('button[data-key]')) {
+  const code = +b.dataset.key; let hold = null, rep = null;
+  const stop = () => { b.classList.remove('down'); clearTimeout(hold); clearInterval(rep); hold = rep = null; };
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); b.setPointerCapture?.(e.pointerId);
+    b.classList.add('down'); key(code);
+    try { navigator.vibrate?.(8); } catch {}
+    if (b.hasAttribute('data-repeat')) hold = setTimeout(() => { rep = setInterval(() => key(code), 170); }, 380);
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, stop);
+}
+addEventListener('contextmenu', e => e.preventDefault());
+// A keyboard works too (handy on a tablet or laptop)
+const KEYMAP = { ArrowUp: 59, ArrowDown: 46, ArrowLeft: 44, ArrowRight: 47, Enter: 13, Escape: 8, Backspace: 8, ' ': 32 };
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  let c = KEYMAP[e.key];
+  if (c === undefined && e.key.length === 1) c = e.key.toLowerCase().charCodeAt(0);
+  if (c !== undefined) { key(c); e.preventDefault(); }
+});
+
+/* ---------- status line ---------- */
+let statusTimer = null;
+function setStatus(t, ms = 4000) { $('#status').textContent = t; clearTimeout(statusTimer); if (ms) statusTimer = setTimeout(() => $('#status').textContent = '', ms); }
+
+
+// Offline play: keep a copy of the game so it runs without a signal
+if ('serviceWorker' in navigator && !window.claude) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+/* ---------- start ---------- */
+(async () => {
+  try {
+    const [buf] = await Promise.all([fetch('game.wasm', { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error('game.wasm ' + r.status); return r.arrayBuffer(); }), loadStore()]);
+    const { instance } = await WebAssembly.instantiate(buf, { env, wasi_snapshot_preview1: new Proxy(wasi, { get: (t, k) => t[k] || (() => 0) }) });
+    ex = instance.exports; mem = ex.memory;
+    ex._initialize?.();
+    $('#startNote').textContent = mode === 'db' ? 'Your saves are kept in your own private save store.' : 'Saves are kept in this browser on this phone.';
+    $('#go').disabled = false;
+  } catch (e) {
+    $('#startNote').textContent = 'Sorry, the game couldn’t load (' + e.message + ').';
+  }
+})();
+$('#go').addEventListener('click', async () => {
+  try { audio = new (window.AudioContext || window.webkitAudioContext)(); await audio.resume(); } catch { audio = null; }
+  try { await document.documentElement.requestFullscreen?.(); await screen.orientation?.lock?.('landscape'); } catch {}
+  $('#start').remove();
+  ex.web_init(Math.floor(performance.now()));
+  paint(); requestAnimationFrame(tick);
+  setStatus(mode === 'db' ? 'Saves: your private save store' : 'Saves: this phone only');
+});
+}
+</script>
+</body>
+</html>
