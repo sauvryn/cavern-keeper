@@ -1,6 +1,6 @@
 // Cavern Keeper offline support. The cache name changes with every new
 // build of the game, so an update replaces the old copy.
-const CACHE = 'cavern-keeper-733e0336fc';
+const CACHE = 'cavern-keeper-8c407dc8f8';
 const FILES = ['./', 'index.html', 'game.wasm', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

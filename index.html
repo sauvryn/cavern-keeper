@@ -65,6 +65,14 @@ button:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
 #go{min-height:54px;padding:0 34px;font-size:18px;color:#1b1a08;background:linear-gradient(#f6f89a,var(--yellow));box-shadow:0 4px 0 #6d6f22}
 #go:disabled{opacity:.5}
 @media (prefers-reduced-motion:no-preference){#go:not(:disabled){animation:pulse 1.6s ease-in-out infinite}}
+/* key letters, shown once a keyboard or mouse is in use */
+.kb{display:none}
+body.keys .kb{display:inline}
+body.keys .kb.k{color:var(--yellow)}
+body.keys #use .kb{color:#5b5a1c}
+body.keys #dpad .kb{display:none}
+#keyHelp{display:none;font-size:11px;color:var(--dim);text-align:center;max-width:64ch}
+body.keys #keyHelp{display:block}
 @keyframes pulse{50%{transform:scale(1.04)}}
 </style>
 </head>
@@ -79,24 +87,25 @@ button:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
       <button class="d" data-key="46" data-repeat aria-label="Back">▼</button>
     </div>
     <div class="small">
-      <button data-key="98">Build</button>
-      <button data-key="114">Reinforce</button>
-      <button data-key="116">Teleport</button>
-      <button data-key="115">Save</button>
+      <button data-key="98" data-act="5" data-label="Build">Build</button>
+      <button data-key="114" data-act="6" data-label="Reinforce">Reinforce</button>
+      <button data-key="116" data-act="12" data-label="Teleport">Teleport</button>
+      <button data-key="115" data-act="11" data-label="Save">Save</button>
     </div>
   </div>
   <div id="screenWrap">
     <canvas id="screen" width="240" height="135"></canvas>
     <div id="status"></div>
+    <div id="keyHelp">Keyboard: arrow keys to walk and turn, Enter to dig or use, Esc to go back</div>
   </div>
   <div class="side" id="right">
     <div class="acts">
-      <button id="use" data-key="13">Dig / Use</button>
-      <button id="back" data-key="8">Back</button>
-      <button data-key="112">Pick up</button>
-      <button data-key="100">Drop</button>
-      <button data-key="99">Catch</button>
-      <button data-key="102">Eat</button>
+      <button id="use" data-key="13">Dig / Use<span class="kb"> (Enter)</span></button>
+      <button id="back" data-key="8">Back<span class="kb"> (Esc)</span></button>
+      <button data-key="112" data-act="7" data-label="Pick up">Pick up</button>
+      <button data-key="100" data-act="8" data-label="Drop">Drop</button>
+      <button data-key="99" data-act="9" data-label="Catch">Catch</button>
+      <button data-key="102" data-act="10" data-label="Eat">Eat</button>
     </div>
   </div>
 </div>
@@ -105,7 +114,7 @@ button:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
   <h2>SOVEREIGN IMP</h2>
   <p id="startNote">Loading…</p>
   <button id="go" disabled>Tap to play</button>
-  <p>Turn your phone sideways for the biggest screen.</p>
+  <p id="startTip">Turn your phone sideways for the biggest screen.</p>
 </div>
 <script>
 {
@@ -133,7 +142,7 @@ async function flush() {
     try {
       const ref = db.collection('data/users/' + userId).doc(docId(k));
       if (u) await ref.set({ k, v: b64(u) }); else await ref.delete();
-    } catch (e) { setStatus('Couldn’t reach the save store; kept on this phone for now'); }
+    } catch (e) { setStatus('Couldn’t reach the save store; kept in this browser for now'); }
   }
   writing = false;
 }
@@ -217,7 +226,7 @@ for (const b of document.querySelectorAll('button[data-key]')) {
   const stop = () => { b.classList.remove('down'); clearTimeout(hold); clearInterval(rep); hold = rep = null; };
   b.addEventListener('pointerdown', e => {
     e.preventDefault(); b.setPointerCapture?.(e.pointerId);
-    b.classList.add('down'); key(code);
+    b.classList.add('down'); key(b.dataset.act && ex?.web_binding ? (ex.web_binding(+b.dataset.act) || code) : code);
     try { navigator.vibrate?.(8); } catch {}
     if (b.hasAttribute('data-repeat')) hold = setTimeout(() => { rep = setInterval(() => key(code), 170); }, 380);
   });
@@ -227,11 +236,42 @@ addEventListener('contextmenu', e => e.preventDefault());
 // A keyboard works too (handy on a tablet or laptop)
 const KEYMAP = { ArrowUp: 59, ArrowDown: 46, ArrowLeft: 44, ArrowRight: 47, Enter: 13, Escape: 8, Backspace: 8, ' ': 32 };
 addEventListener('keydown', e => {
+  showKeys();
+  if ($('#start')) { if (e.key === 'Enter' && !$('#go').disabled) { e.preventDefault(); $('#go').click(); } return; }
   if (e.repeat) return;
   let c = KEYMAP[e.key];
   if (c === undefined && e.key.length === 1) c = e.key.toLowerCase().charCodeAt(0);
   if (c !== undefined) { key(c); e.preventDefault(); }
 });
+
+/* ---------- key letters on the buttons: "(P)ick up", "Eat (F)" ----------
+   They follow your bindings on the Controls screen, so a changed key shows (and works) here too. */
+const esc = t => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+function keyLabel(label, name) {
+  if (name.length === 1) {
+    const i = label.toLowerCase().indexOf(name.toLowerCase());
+    if (i >= 0) return esc(label.slice(0, i)) + '<span class="kb k">(</span>' + esc(label[i]) + '<span class="kb k">)</span>' + esc(label.slice(i + 1));
+  }
+  return esc(label) + '<span class="kb k"> (' + esc(name) + ')</span>';
+}
+let shownNames = '';
+function updateKeyLabels() {
+  if (!ex?.web_key_name) return;
+  const btns = [...document.querySelectorAll('button[data-act]')];
+  const names = btns.map(b => str(ex.web_key_name(+b.dataset.act)));
+  if (names.some(n => !n)) return;              // bindings load when the game starts
+  if (names.join('|') === shownNames) return;
+  shownNames = names.join('|');
+  btns.forEach((b, i) => { b.innerHTML = keyLabel(b.dataset.label, names[i]); b.setAttribute('aria-label', b.dataset.label + ', key ' + names[i]); });
+}
+function showKeys() {
+  if (document.body.classList.contains('keys')) return;
+  document.body.classList.add('keys');
+  const tip = $('#startTip'); if (tip) tip.textContent = 'Playing on a keyboard? The buttons show their keys.';
+  const go = $('#go'); if (go) go.textContent = 'Click or press Enter to play';
+}
+if (matchMedia('(hover:hover) and (pointer:fine)').matches) showKeys();
+setInterval(updateKeyLabels, 500);              // picks up changes made on the Controls screen
 
 /* ---------- status line ---------- */
 let statusTimer = null;
@@ -249,7 +289,8 @@ if ('serviceWorker' in navigator && !window.claude) {
     const { instance } = await WebAssembly.instantiate(buf, { env, wasi_snapshot_preview1: new Proxy(wasi, { get: (t, k) => t[k] || (() => 0) }) });
     ex = instance.exports; mem = ex.memory;
     ex._initialize?.();
-    $('#startNote').textContent = mode === 'db' ? 'Your saves are kept in your own private save store.' : 'Saves are kept in this browser on this phone.';
+    updateKeyLabels();
+    $('#startNote').textContent = mode === 'db' ? 'Your saves are kept in your own private save store.' : 'Saves are kept in this browser on this device.';
     $('#go').disabled = false;
   } catch (e) {
     $('#startNote').textContent = 'Sorry, the game couldn’t load (' + e.message + ').';
@@ -261,7 +302,7 @@ $('#go').addEventListener('click', async () => {
   $('#start').remove();
   ex.web_init(Math.floor(performance.now()));
   paint(); requestAnimationFrame(tick);
-  setStatus(mode === 'db' ? 'Saves: your private save store' : 'Saves: this phone only');
+  setStatus(mode === 'db' ? 'Saves: your private save store' : 'Saves: this browser only');
 });
 }
 </script>

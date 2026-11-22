@@ -50,8 +50,9 @@ To update the game later, upload the new `game.wasm` (and `index.html` and
 
 A keyboard works too: arrow keys, Enter, Esc, and the same letters as the
 Cardputer (E dig, B build, R reinforce, P pick up, D drop, C catch, F eat,
-S save, T teleport). Don't rebind keys on the Controls screen in this
-version, because the touch buttons send the default keys.
+S save, T teleport). On a laptop, each button shows its key, like
+"(P)ick up". If you change a key on the Controls screen, the buttons show
+and use the new one.
 
 ## Credits and licences
 
