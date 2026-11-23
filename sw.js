@@ -1,6 +1,6 @@
 // Cavern Keeper offline support. The cache name changes with every new
 // build of the game, so an update replaces the old copy.
-const CACHE = 'cavern-keeper-b6debb9d40';
+const CACHE = 'cavern-keeper-218563361f';
 const FILES = ['./', 'index.html', 'game.wasm', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -13,7 +13,9 @@ self.addEventListener('activate', e => {
 // falling back to the saved copy when you're offline
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(fetch(e.request).then(r => {
+  // Always ask GitHub whether there's a newer copy (not the browser's own
+  // short-term cache), so an update shows up on the next visit.
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(r => {
     if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
     return r;
   }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html'))));
