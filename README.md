@@ -49,8 +49,8 @@ To update the game later, upload the new `game.wasm` (and `index.html` and
 - **Pick up, Drop, Catch, Eat, Build, Reinforce, Teleport, Save:** as named.
 
 A keyboard works too: arrow keys, Enter, Esc, and the same letters as the
-Cardputer (E dig, B build, R reinforce, P pick up, D drop, C catch, F eat,
-S save, T teleport). On a laptop, each button shows its key, like
+Cardputer (E dig, B build, R reinforce, P pick up, D drop, T trap a bug, F eat, C claim a tile,
+S save, H teleport home). On a laptop, each button shows its key, like
 "(P)ick up". If you change a key on the Controls screen, the buttons show
 and use the new one.
 
